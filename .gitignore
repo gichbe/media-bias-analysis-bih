@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+
+# Data (osim small samples)
+data/raw/*.json
+data/processed/*.json
+data/processed/*.csv
+data/annotations/*.csv
+!data/annotations/sample.csv
+
+# Results
+results/*.png
+results/*.pdf
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lični vodiči (ne idu na GitHub)
+docs/QUICKSTART.md
+docs/thesis_outline.md
+!data/processed/articles_shuffled.json
