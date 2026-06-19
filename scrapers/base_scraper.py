@@ -82,11 +82,23 @@ class BaseScraper(ABC):
             time.sleep(random.uniform(*self.REQUEST_DELAY_RANGE))
             response = self.session.get(url, timeout=self.REQUEST_TIMEOUT)
             response.raise_for_status()
-            # Forsiraj UTF-8 ako server nije eksplicitno deklarisao charset
-            # (requests pogađa Latin-1 i mlati ć/č/š/ž/đ)
+
+            # Robusno otkrivanje enkoding-a:
+            # - Ako server eksplicitno deklariše charset, vjeruj mu
+            # - Ako kaže ISO-8859-1 (requests default), vjerovatno je pogrešno - probaj
+            #   apparent_encoding koji analizira sadržaj
+            # - Kao zadnja opcija forsiraj UTF-8 (99% news sajtova)
             content_type = response.headers.get("Content-Type", "").lower()
-            if "charset" not in content_type:
-                response.encoding = "utf-8"
+            declared_charset = "charset=" in content_type
+            current_enc = (response.encoding or "").lower()
+
+            if not declared_charset or current_enc in ("iso-8859-1", "latin-1", "ascii"):
+                detected = (response.apparent_encoding or "").lower()
+                if detected and detected not in ("ascii", "iso-8859-1"):
+                    response.encoding = detected
+                else:
+                    response.encoding = "utf-8"
+
             return response.text
         except requests.RequestException as exc:
             self.logger.warning("Failed to fetch %s: %s", url, exc)

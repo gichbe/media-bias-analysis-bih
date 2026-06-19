@@ -1,16 +1,11 @@
 """
-Robustan fix mojibake-a koristeći ftfy biblioteku.
+Konzervativan fix mojibake-a koristeci samo ftfy biblioteku.
 
-ftfy ('Fixes Text For You') rješava sve varijante mojibake-a:
-  - jednostruki UTF-8 <-> Latin-1 swap
-  - dvostruki/trostruki encoding
-  - HTML entities, kontrolni karakteri, itd.
+Vazno: koristi SAMO ftfy. Nema agresivnih strategija koje mogu uniStiti tekst.
+Ako ftfy ne moze popraviti, ostavlja tekst kakav jeste.
 
-Instalacija:
-    pip install ftfy
-
-Pokretanje:
-    python fix_mojibake.py "data/raw/*.json" "data/processed/*.json"
+Instalacija: pip install ftfy
+Pokretanje:  python fix_mojibake.py "data/raw/*.json" "data/processed/*.json"
 """
 
 import glob
@@ -21,9 +16,17 @@ from pathlib import Path
 try:
     import ftfy
 except ImportError:
-    print("Nedostaje ftfy biblioteka. Instaliraj sa:")
-    print("    pip install ftfy")
+    print("Instaliraj: pip install ftfy")
     sys.exit(1)
+
+
+MOJIBAKE_CHARS = ["Ä", "Å", "Â", "Ã", "â\x80"]
+
+
+def mojibake_score(text):
+    if not isinstance(text, str):
+        return 0
+    return sum(text.count(c) for c in MOJIBAKE_CHARS)
 
 
 def fix_recursive(obj):
@@ -44,39 +47,34 @@ def main():
 
     files = []
     for arg in args:
-        expanded = glob.glob(arg)
-        if not expanded:
-            print(f"Nema fajlova za: {arg}")
-        files.extend(Path(f) for f in expanded)
+        files.extend(Path(f) for f in glob.glob(arg))
 
-    if not files:
-        print("Nema JSON fajlova za obradu.")
-        sys.exit(1)
-
-    fixed_count = 0
+    total_fixed = 0
     for path in files:
         if path.suffix != ".json" or not path.exists():
             continue
         try:
             with path.open(encoding="utf-8") as f:
                 data = json.load(f)
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        except Exception as e:
             print(f"  SKIP {path}: {e}")
             continue
 
-        original = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        original_score = mojibake_score(json.dumps(data, ensure_ascii=False))
         fixed = fix_recursive(data)
-        new = json.dumps(fixed, ensure_ascii=False, sort_keys=True)
+        new_score = mojibake_score(json.dumps(fixed, ensure_ascii=False))
 
-        if original != new:
+        if new_score < original_score:
             with path.open("w", encoding="utf-8") as f:
                 json.dump(fixed, f, ensure_ascii=False, indent=2)
-            print(f"  FIX  {path}")
-            fixed_count += 1
+            print(f"  FIX  {path}  ({original_score} -> {new_score})")
+            total_fixed += 1
+        elif original_score > 0:
+            print(f"  ??   {path}  (mojibake i dalje: {original_score} - ftfy nije uspio)")
         else:
             print(f"  OK   {path}")
 
-    print(f"\nGotovo. Popravljeno {fixed_count} fajl(ova).")
+    print(f"\nGotovo. Popravljeno {total_fixed} fajl(ova).")
 
 
 if __name__ == "__main__":

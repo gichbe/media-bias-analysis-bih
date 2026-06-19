@@ -38,3 +38,5 @@ Thumbs.db
 docs/QUICKSTART.md
 docs/thesis_outline.md
 !data/processed/articles_shuffled.json
+
+data/raw_BACKUP_*/

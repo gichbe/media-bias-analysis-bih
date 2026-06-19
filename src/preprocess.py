@@ -66,6 +66,7 @@ def deduplicate(articles: list[dict]) -> list[dict]:
 
 def filter_quality(articles: list[dict], min_length: int = 300) -> list[dict]:
     """Filtriraj članke koji su prekratki ili imaju problem."""
+    mojibake_chars = ["Ä", "Å", "Â", "Ã"]
     filtered = []
     for a in articles:
         body = a.get("body", "")
@@ -76,14 +77,19 @@ def filter_quality(articles: list[dict], min_length: int = 300) -> list[dict]:
             continue
 
         # Listing/kategorijske stranice: kratak naslov sa "|"
-        # (npr. "Ekonomija | N1 info", "Vijesti | Klix")
         if "|" in title and len(title) < 50:
             continue
 
-        # Body koji izgleda kao listing (mnogo "prije X h" oznaka)
+        # Body koji izgleda kao listing
         body_lower = body.lower()
         listing_markers = body_lower.count("prije") + body_lower.count(" | 0")
         if listing_markers > 10:
+            continue
+
+        # Odbaci ako ima mnogo mojibake karaktera u naslovu ili početku body-ja
+        check_text = title + body[:1000]
+        mojibake_count = sum(check_text.count(c) for c in mojibake_chars)
+        if mojibake_count > 5:
             continue
 
         filtered.append(a)
