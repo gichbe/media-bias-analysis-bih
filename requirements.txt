@@ -30,4 +30,4 @@ tqdm>=4.66.0
 click>=8.1.0
 
 # GUI za anotaciju
-streamlit>=1.32.0
+streamlit>=1.52.0,<2.0.0

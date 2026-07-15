@@ -23,6 +23,42 @@ import pandas as pd
 import streamlit as st
 
 
+def scroll_to_top(nonce):
+    """Pomjeri skrol na vrh; nonce prisiljava ponovno izvrsavanje skripte."""
+    html = """
+        <script data-scroll-nonce="__NONCE__">
+            (() => {
+                const scrollUp = () => {
+                    const targets = [
+                        document.querySelector('[data-testid="stAppViewContainer"]'),
+                        document.querySelector('[data-testid="stMain"]'),
+                        document.scrollingElement,
+                        document.documentElement,
+                        document.body,
+                    ].filter(Boolean);
+
+                    for (const target of targets) {
+                        target.scrollTop = 0;
+                        if (typeof target.scrollTo === "function") {
+                            target.scrollTo({top: 0, left: 0, behavior: "auto"});
+                        }
+                    }
+
+                    window.scrollTo({top: 0, left: 0, behavior: "auto"});
+                };
+
+                // Izvrsi nakon sto Streamlit iscrta novi clanak.
+                requestAnimationFrame(() => requestAnimationFrame(scrollUp));
+                setTimeout(scrollUp, 100);
+                setTimeout(scrollUp, 300);
+                setTimeout(scrollUp, 600);
+            })();
+        </script>
+    """.replace("__NONCE__", str(nonce))
+
+    st.html(html, unsafe_allow_javascript=True)
+
+
 DATASET_PATH = "data/processed/articles_shuffled.json"
 
 FRAMING_OPTIONS = [
@@ -44,6 +80,8 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown('<div id="page-top"></div>', unsafe_allow_html=True)
+
 st.markdown("""
 <style>
 .article-title { font-size: 1.5rem; font-weight: 600; line-height: 1.3; }
@@ -63,6 +101,10 @@ if "excluded" not in st.session_state:
     st.session_state.excluded = []
 if "started" not in st.session_state:
     st.session_state.started = False
+if "scroll_to_top" not in st.session_state:
+    st.session_state.scroll_to_top = False
+if "scroll_nonce" not in st.session_state:
+    st.session_state.scroll_nonce = 0
 
 
 # -- Helpers ----------------------------------------------------------------
@@ -345,6 +387,8 @@ if submit:
         "confidence": confidence,
         "notes": notes or None,
     })
+    st.session_state.scroll_nonce += 1
+    st.session_state.scroll_to_top = True
     st.rerun()
 
 if exclude_btn:
@@ -355,4 +399,11 @@ if exclude_btn:
         "annotator_id": annotator_id,
         "reason": exclude_reason,
     })
+    st.session_state.scroll_nonce += 1
+    st.session_state.scroll_to_top = True
     st.rerun()
+
+# -- Scroll to top (na samom kraju, nakon sto je sav sadrzaj renderovan) ----
+if st.session_state.scroll_to_top:
+    scroll_to_top(st.session_state.scroll_nonce)
+    st.session_state.scroll_to_top = False
