@@ -1,46 +1,29 @@
 """
-Scraper za Avaz.ba.
-
-Avaz drži mjesečne sitemap-ove na:
-  https://avaz.ba/sitemap-server.xml/currentMonth.xml
-  https://avaz.ba/sitemap-server.xml/YYYY-M.xml
+Scraper za Avaz.ba - koristi RSS feed jer im sitemap nije pouzdan.
 """
 
 import argparse
-import re
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
 from scrapers.base_scraper import BaseScraper
-from scrapers.sitemap_helper import parse_sitemap_urls
+from scrapers.rss_helper import fetch_multiple_rss
 
 
 class AvazScraper(BaseScraper):
     PORTAL_NAME = "avaz"
     BASE_URL = "https://avaz.ba"
-    SITEMAP_URL_PATTERN = r"avaz\.ba/(vijesti|teme)/[\w\-/]+/\d+/"
-    MAX_AGE_DAYS = 180
+    # Format URL-ova: avaz.ba/vijesti/bih/1048252/slug ili teme/...
+    SITEMAP_URL_PATTERN = r"avaz\.ba/(vijesti|teme|biznis|sport)/[\w\-/]+/\d+/"
+
+    RSS_FEEDS = [
+        "https://avaz.ba/rss",
+        "https://avaz.ba/feed",
+    ]
 
     def get_article_urls(self, max_urls: int) -> list[str]:
-        # Konstruiši URL-ove za zadnja 3 mjeseca
-        sitemap_urls = ["https://avaz.ba/sitemap-server.xml/currentMonth.xml"]
-        today = datetime.utcnow()
-        for i in range(1, 4):
-            d = today - relativedelta(months=i)
-            sitemap_urls.append(f"https://avaz.ba/sitemap-server.xml/{d.year}-{d.month}.xml")
-
-        pattern = re.compile(self.SITEMAP_URL_PATTERN)
-        urls: list[str] = []
-        for sm_url in sitemap_urls:
-            self.logger.info("Avaz sitemap: %s", sm_url)
-            sub = parse_sitemap_urls(
-                sm_url, self.session, pattern,
-                self.MAX_AGE_DAYS, max_urls - len(urls),
-            )
-            urls.extend(u for u in sub if u not in urls)
-            if len(urls) >= max_urls:
-                break
-        return urls[:max_urls]
+        return fetch_multiple_rss(
+            self.RSS_FEEDS, self.session,
+            url_pattern=self.SITEMAP_URL_PATTERN,
+            max_total=max_urls,
+        )
 
 
 def main():

@@ -28,3 +28,6 @@ plotly>=5.18.0
 python-dotenv>=1.0.0
 tqdm>=4.66.0
 click>=8.1.0
+
+# GUI za anotaciju
+streamlit>=1.32.0

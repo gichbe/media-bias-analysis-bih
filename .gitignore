@@ -40,3 +40,5 @@ docs/thesis_outline.md
 !data/processed/articles_shuffled.json
 
 data/raw_BACKUP_*/
+data/raw/*.txt
+*.numbers
